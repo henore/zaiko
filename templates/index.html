@@ -1,0 +1,176 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+   <title>在庫管理(大阪）</title>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+   <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<!-- 既存のh2を削除 -->
+<div class="container-fluid p-4">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand">在庫管理（大阪）</span>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">在庫一覧</a>
+                <a class="nav-link active" href="/sales">売上一覧</a>
+            </div>
+        </div>
+    </nav>
+
+        <!-- ボタングループ -->
+    <div class="btn-group mb-4">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">新規商品登録</button>
+        <button class="btn btn-success" id="updateStockBtn" disabled>在庫追加</button>
+        <button class="btn btn-warning" id="reduceStockBtn" disabled>売上登録</button>
+    </div>
+
+       <table id="productTable" class="table table-striped">
+           <thead>
+               <tr>
+                   <th>商品名</th>
+                   <th>カラー</th>
+                   <th>サイズ</th>
+                   <th>在庫数</th>
+              <!--     <th>状態</th> --!>
+               </tr>
+           </thead>
+           <tbody></tbody>
+       </table>
+   </div>
+
+   <!-- 新規商品登録モーダル -->
+   <div class="modal fade" id="addProductModal" tabindex="-1">
+       <div class="modal-dialog">
+           <div class="modal-content">
+               <div class="modal-header">
+                   <h5 class="modal-title">新規商品登録</h5>
+                   <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+               </div>
+               <div class="modal-body">
+                   <form id="addProductForm">
+                       <div class="mb-3">
+                           <label class="form-label">商品名:</label>
+                           <input type="text" class="form-control" name="name" required>
+                       </div>
+                       <div class="mb-3">
+                           <label class="form-label">カラー:</label>
+                           <input type="text" class="form-control" name="color" required>
+                       </div>
+                       <div class="mb-3">
+                           <label class="form-label">サイズ (任意):</label>
+                           <input type="text" class="form-control" name="size">
+                       </div>
+                       <div class="mb-3">
+                           <label class="form-label">在庫:</label>
+                           <input type="number" class="form-control" name="quantity" required>
+                       </div>
+                   </form>
+               </div>
+               <div class="modal-footer">
+                   <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                   <button type="button" class="btn btn-primary" id="addProductBtn">登録</button>
+               </div>
+           </div>
+       </div>
+   </div>
+
+<!-- 在庫追加モーダル -->
+<div class="modal fade" id="updateStockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">在庫追加</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="selectedProduct"></p>
+                <div class="mb-3">
+                    <label class="form-label">追加数:</label>
+                    <input type="number" class="form-control" id="stockQuantity" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                <button type="button" class="btn btn-primary" id="updateStockConfirmBtn">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 売上登録モーダル -->
+<div class="modal fade" id="saleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">売上登録</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="selectedProductForSale"></p>
+                <div class="mb-3">
+                    <label class="form-label">数量:</label>
+                    <input type="number" class="form-control" id="saleQuantity" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">売上価格:</label>
+                    <input type="number" class="form-control" id="salePrice" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">送料:</label>
+                    <input type="number" class="form-control" id="shippingFee" value="">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">おまとめID:</label>
+                    <input type="text" class="form-control" id="bundleId">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                <button type="button" class="btn btn-primary" id="saleConfirmBtn">登録</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 編集モーダル -->
+<div class="modal fade" id="editProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">商品情報編集</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProductForm">
+                    <div class="mb-3">
+                        <label class="form-label">商品名:</label>
+                        <input type="text" class="form-control" name="new_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">カラー:</label>
+                        <input type="text" class="form-control" name="new_color" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">サイズ:</label>
+                        <input type="text" class="form-control" name="new_size">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                <button type="button" class="btn btn-primary" id="editProductBtn">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+   <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

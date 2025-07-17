@@ -1,0 +1,219 @@
+<!-- templates/sales.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>売上一覧</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container-fluid p-4">
+    <!-- ナビゲーション -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand">在庫管理(大阪）</span>
+            <div class="navbar-nav">
+                <a class="nav-link active" href="/">在庫一覧</a>
+                <a class="nav-link" href="/sales">売上一覧</a>
+            </div>
+        </div>
+    </nav>
+
+            <table id="salesTable" class="table">
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>商品名</th>
+                        <th>カラー</th>
+                        <th>サイズ</th>
+                        <th>数量</th>
+                        <th>価格</th>
+                        <th>送料</th>
+                        <th>おまとめID</th>
+                        <th>利益</th>
+                    </tr>
+                </thead>
+                    <tfoot>
+                 <tr>
+            <th colspan="8"></th>
+            <th></th>
+        </tr>
+    </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+$(document).ready(function() {
+    // 現在の年月を取得（初期フィルター用）
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+
+    // 初期フィルターを当月に設定
+    window.currentMonthFilter = currentYearMonth;
+
+    // 月ごとのフィルター用関数を定義
+    $.fn.dataTable.ext.search.push(
+        function(settings, data, dataIndex, rowData) {
+            // フィルターが設定されていない場合はすべての行を表示
+            if (!window.currentMonthFilter) {
+                return true;
+            }
+
+            // data[0]は日付カラムの値
+            let rowDate = data[0];
+            if (!rowDate) return false;
+
+            try {
+                // 日付文字列をDate型に変換
+                const date = new Date(rowDate);
+                if (isNaN(date.getTime())) return false;
+
+                // 年月を取得（YYYY-MM形式）
+                const yearMonth = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+
+                // 設定されたフィルターと一致するかチェック
+                return yearMonth === window.currentMonthFilter;
+            } catch (e) {
+                console.error('日付処理エラー:', e);
+                return false;
+            }
+        }
+    );
+
+    // 元の詳細テーブル
+    let detailTable = $('#salesTable').DataTable({
+        ajax: {
+            url: '/get_sales_data',
+            dataSrc: ''
+        },
+        columns: [
+            { data: 'date' },
+            { data: 'name' },
+            { data: 'color' },
+            { data: 'size' },
+            { data: 'quantity' },
+            { data: 'price' },
+            { data: 'shipping_fee' },
+            { data: 'bundle_id' },
+            { data: 'profit' }
+        ],
+        order: [[0, 'desc']],
+        pageLength: -1,
+        lengthMenu: [[-1], ["全て"]],
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Japanese.json'
+        },
+        footerCallback: function(row, data, start, end, display) {
+            let api = this.api();
+            let total = api.column(8, { search: 'applied' }).data().reduce((a, b) => a + b, 0);
+            $(api.column(8).footer()).html(`合計利益: ${total.toLocaleString()}円`);
+        },
+        initComplete: function() {
+            // データ読み込み完了後に年月のセレクトボックスを作成
+            createMonthSelector(this.api());
+
+            // テーブル上部に月切替ボタングループを追加
+            $('#salesTable_wrapper .dataTables_filter').before(`
+                <div class="btn-group me-3 month-filter-buttons">
+                    <button class="btn btn-sm btn-outline-primary current-month active">当月</button>
+                    <button class="btn btn-sm btn-outline-primary all-months">全期間</button>
+                </div>
+            `);
+
+            // 当月ボタンのイベント処理
+            $('.month-filter-buttons .current-month').click(function() {
+                const now = new Date();
+                const currentYearMonth = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+                window.currentMonthFilter = currentYearMonth;
+                detailTable.draw();
+
+                // ボタン状態更新
+                $('.month-filter-buttons button').removeClass('active');
+                $(this).addClass('active');
+                $('#month-selector').val(currentYearMonth);
+            });
+
+            // 全期間ボタンのイベント処理
+            $('.month-filter-buttons .all-months').click(function() {
+                window.currentMonthFilter = null;
+                detailTable.draw();
+
+                // ボタン状態更新
+                $('.month-filter-buttons button').removeClass('active');
+                $(this).addClass('active');
+                $('#month-selector').val('');
+            });
+
+            // 初期状態を当月にセット
+            $('#month-selector').val(currentYearMonth);
+        }
+    });
+
+    // 年月選択セレクトボックスを作成する関数
+    function createMonthSelector(api) {
+        // 表示されている日付から年月の一覧を取得
+        const yearMonths = {};
+
+        api.column(0).data().each(function(value) {
+            try {
+                // APIから取得した値がオブジェクトの場合
+                if (typeof value === 'object' && value.date) {
+                    value = value.date;
+                }
+
+                if (value) {
+                    const date = new Date(value);
+                    if (!isNaN(date.getTime())) {
+                        const ym = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                        yearMonths[ym] = true;
+                    }
+                }
+            } catch (e) {
+                console.error('日付処理エラー:', e, value);
+            }
+        });
+
+        // 年月の選択肢を生成（新しい順）
+        const sortedYearMonths = Object.keys(yearMonths).sort().reverse();
+        let options = '<option value="">全期間</option>';
+
+        sortedYearMonths.forEach(ym => {
+            // 表示用に年月をフォーマット
+            const [year, month] = ym.split('-');
+            const displayYm = `${year}年${month}月`;
+            options += `<option value="${ym}">${displayYm}</option>`;
+        });
+
+        // セレクトボックスを作成して挿入
+        const selectBox = $(`<select id="month-selector" class="form-select form-select-sm ms-3" style="width: auto; display: inline-block;">${options}</select>`);
+        $('#salesTable_wrapper .dataTables_filter').before(selectBox);
+
+        // セレクトボックスの変更イベント
+        selectBox.on('change', function() {
+            const selectedMonth = $(this).val();
+            window.currentMonthFilter = selectedMonth || null;
+            detailTable.draw();
+
+            // ボタン状態更新
+            $('.month-filter-buttons button').removeClass('active');
+            if (selectedMonth) {
+                $('.month-filter-buttons .current-month').addClass('active');
+            } else {
+                $('.month-filter-buttons .all-months').addClass('active');
+            }
+        });
+
+        // 開発用：利用可能な年月リストをコンソールに出力
+        console.log('利用可能な年月:', sortedYearMonths);
+    }
+});
+    </script>
+</body>
+</html>
