@@ -27,6 +27,7 @@ $(document).ready(function() {
         $(row).css('background-color',
             productGroups[data.name] % 2 ? '#E8F5E9' : '#F3E5F5'
         );
+        $(row).attr('title', 'ダブルクリックで編集');
     },
        pageLength: -1,
        lengthMenu: [[-1], ["全て"]],

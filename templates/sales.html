@@ -162,6 +162,9 @@ $(document).ready(function() {
             { data: 'profit' }
         ],
         order: [[1, 'desc']],
+        createdRow: function(row) {
+            $(row).attr('title', 'ダブルクリックで編集');
+        },
         pageLength: -1,
         lengthMenu: [[-1], ["全て"]],
         language: {
