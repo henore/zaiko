@@ -35,7 +35,7 @@ $(document).ready(function() {
            url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Japanese.json'
        },
        initComplete: function() {
-           $('#productTable_filter input').css('ime-mode', 'active').attr('inputmode', 'text');
+           $('#productTable_filter input').attr('type', 'text');
        }
    });
 

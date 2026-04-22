@@ -10,5 +10,9 @@
 }
 
 .dataTables_filter input {
-    ime-mode: active;
+    ime-mode: active !important;
+}
+
+input[type="search"] {
+    ime-mode: active !important;
 }
