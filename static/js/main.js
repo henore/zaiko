@@ -35,7 +35,9 @@ $(document).ready(function() {
            url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Japanese.json'
        },
        initComplete: function() {
-           $('#productTable_filter input').attr('type', 'text');
+           var searchInput = $('#productTable_filter input')[0];
+           searchInput.type = 'text';
+           wanakana.bind(searchInput, { IMEMode: 'toKatakana' });
        }
    });
 
