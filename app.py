@@ -156,7 +156,7 @@ def get_sales_data():
     if month:
         # 特定の月のデータを取得
         cursor.execute('''
-            SELECT s.id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
+            SELECT s.rowid as id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
                    CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
                    strftime('%Y-%m', s.date) as month
             FROM sales s
@@ -167,7 +167,7 @@ def get_sales_data():
     else:
         # 過去12ヶ月のデータを取得
         cursor.execute('''
-            SELECT s.id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
+            SELECT s.rowid as id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
                    CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
                    strftime('%Y-%m', s.date) as month
             FROM sales s
@@ -197,7 +197,7 @@ def update_sale():
         cursor.execute('''
             UPDATE sales
             SET date = ?, product_id = ?, quantity = ?, price = ?, shipping_fee = ?, bundle_id = ?
-            WHERE id = ?
+            WHERE rowid = ?
         ''', (data['date'], product[0], data['quantity'], data['price'], shipping_fee, data['bundle_id'], data['id']))
 
         conn.commit()
