@@ -8,3 +8,7 @@
 #salesTable tbody tr {
     cursor: pointer;
 }
+
+.dataTables_filter input {
+    ime-mode: active;
+}

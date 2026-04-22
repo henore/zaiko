@@ -33,6 +33,9 @@ $(document).ready(function() {
        lengthMenu: [[-1], ["全て"]],
        language: {
            url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Japanese.json'
+       },
+       initComplete: function() {
+           $('#productTable_filter input').css('ime-mode', 'active').attr('inputmode', 'text');
        }
    });
 
