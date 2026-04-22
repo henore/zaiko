@@ -3,3 +3,21 @@
 .even { background-color: #fff !important; }
 .product-group-1 { background-color: #E8F5E9 !important; }
 .product-group-2 { background-color: #F3E5F5 !important; }
+
+#productTable tbody tr,
+#salesTable tbody tr {
+    cursor: pointer;
+    position: relative;
+}
+
+#productTable tbody tr:hover::after,
+#salesTable tbody tr:hover::after {
+    content: 'ダブルクリックで編集';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: #888;
+    pointer-events: none;
+}

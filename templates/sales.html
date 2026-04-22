@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 <div class="container-fluid p-4">
@@ -45,6 +46,58 @@
         </div>
     </div>
 
+<!-- 売上編集モーダル -->
+<div class="modal fade" id="editSaleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">売上編集</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSaleForm">
+                    <div class="mb-3">
+                        <label class="form-label">日付:</label>
+                        <input type="date" class="form-control" id="editSaleDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">商品名:</label>
+                        <input type="text" class="form-control" id="editSaleName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">カラー:</label>
+                        <input type="text" class="form-control" id="editSaleColor" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">サイズ:</label>
+                        <input type="text" class="form-control" id="editSaleSize">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">数量:</label>
+                        <input type="number" class="form-control" id="editSaleQuantity" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">価格:</label>
+                        <input type="number" class="form-control" id="editSalePrice" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">送料:</label>
+                        <input type="number" class="form-control" id="editSaleShipping">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">おまとめID:</label>
+                        <input type="text" class="form-control" id="editSaleBundleId">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                <button type="button" class="btn btn-primary" id="editSaleConfirmBtn">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
@@ -66,8 +119,7 @@ $(document).ready(function() {
                 return true;
             }
 
-            // data[0]は日付カラムの値
-            let rowDate = data[0];
+            let rowDate = data[1];
             if (!rowDate) return false;
 
             try {
@@ -94,6 +146,7 @@ $(document).ready(function() {
             dataSrc: ''
         },
         columns: [
+            { data: 'id', visible: false },
             { data: 'date' },
             { data: 'name' },
             { data: 'color' },
@@ -104,7 +157,7 @@ $(document).ready(function() {
             { data: 'bundle_id' },
             { data: 'profit' }
         ],
-        order: [[0, 'desc']],
+        order: [[1, 'desc']],
         pageLength: -1,
         lengthMenu: [[-1], ["全て"]],
         language: {
@@ -112,8 +165,8 @@ $(document).ready(function() {
         },
         footerCallback: function(row, data, start, end, display) {
             let api = this.api();
-            let total = api.column(8, { search: 'applied' }).data().reduce((a, b) => a + b, 0);
-            $(api.column(8).footer()).html(`合計利益: ${total.toLocaleString()}円`);
+            let total = api.column(9, { search: 'applied' }).data().reduce((a, b) => a + b, 0);
+            $(api.column(9).footer()).html(`合計利益: ${total.toLocaleString()}円`);
         },
         initComplete: function() {
             // データ読み込み完了後に年月のセレクトボックスを作成
@@ -161,7 +214,7 @@ $(document).ready(function() {
         // 表示されている日付から年月の一覧を取得
         const yearMonths = {};
 
-        api.column(0).data().each(function(value) {
+        api.column(1).data().each(function(value) {
             try {
                 // APIから取得した値がオブジェクトの場合
                 if (typeof value === 'object' && value.date) {
@@ -213,6 +266,54 @@ $(document).ready(function() {
         // 開発用：利用可能な年月リストをコンソールに出力
         console.log('利用可能な年月:', sortedYearMonths);
     }
+
+    // ダブルクリックで売上編集モーダル表示
+    $('#salesTable tbody').on('dblclick', 'tr', function() {
+        const data = detailTable.row(this).data();
+        if (!data) return;
+
+        $('#editSaleModal').data('saleId', data.id);
+        $('#editSaleDate').val(data.date);
+        $('#editSaleName').val(data.name);
+        $('#editSaleColor').val(data.color);
+        $('#editSaleSize').val(data.size || '');
+        $('#editSaleQuantity').val(data.quantity);
+        $('#editSalePrice').val(data.price);
+        $('#editSaleShipping').val(data.shipping_fee != null ? data.shipping_fee : '');
+        $('#editSaleBundleId').val(data.bundle_id || '');
+        $('#editSaleModal').modal('show');
+    });
+
+    // 売上編集の更新処理
+    $('#editSaleConfirmBtn').click(function() {
+        const shippingVal = $('#editSaleShipping').val();
+        const payload = {
+            id: $('#editSaleModal').data('saleId'),
+            date: $('#editSaleDate').val(),
+            name: $('#editSaleName').val(),
+            color: $('#editSaleColor').val(),
+            size: $('#editSaleSize').val() || null,
+            quantity: parseInt($('#editSaleQuantity').val()),
+            price: parseInt($('#editSalePrice').val()),
+            shipping_fee: shippingVal !== '' ? parseInt(shippingVal) : null,
+            bundle_id: $('#editSaleBundleId').val() || null
+        };
+
+        $.ajax({
+            url: '/update_sale',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function(response) {
+                if (response.success) {
+                    $('#editSaleModal').modal('hide');
+                    detailTable.ajax.reload();
+                } else {
+                    alert('エラーが発生しました: ' + response.error);
+                }
+            }
+        });
+    });
 });
     </script>
 </body>

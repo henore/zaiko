@@ -3,6 +3,7 @@ import sqlite3
 from functools import wraps
 from flask import session, redirect, url_for
 import os
+import hashlib
 from datetime import datetime
 
 app = Flask(__name__)
@@ -19,7 +20,7 @@ def login_required(f):
 
 def login():
    if request.method == 'POST':
-       if request.form['password'] == '':  # パスワードを設定　コミット用に平文パスワードを一時的に削除
+       if hashlib.sha256(request.form['password'].encode()).hexdigest() == '8fd3b9cc91f87b6996012fbe0e5d1643f9d0da46f72ae36fbc986aef47d4fe83':
            session['logged_in'] = True
            return redirect(url_for('index'))
        return 'パスワードが違います'
@@ -155,8 +156,8 @@ def get_sales_data():
     if month:
         # 特定の月のデータを取得
         cursor.execute('''
-            SELECT s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
-                   CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - s.shipping_fee AS INTEGER) as profit,
+            SELECT s.id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
+                   CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
                    strftime('%Y-%m', s.date) as month
             FROM sales s
             JOIN products p ON s.product_id = p.id
@@ -166,8 +167,8 @@ def get_sales_data():
     else:
         # 過去12ヶ月のデータを取得
         cursor.execute('''
-            SELECT s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
-                   CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - s.shipping_fee AS INTEGER) as profit,
+            SELECT s.id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
+                   CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
                    strftime('%Y-%m', s.date) as month
             FROM sales s
             JOIN products p ON s.product_id = p.id
@@ -177,6 +178,36 @@ def get_sales_data():
 
     sales = [dict(row) for row in cursor.fetchall()]
     return jsonify(sales)
+
+@app.route('/update_sale', methods=['POST'])
+def update_sale():
+    data = request.json
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT id FROM products
+            WHERE name = ? AND color = ? AND (size = ? OR (size IS NULL AND ? IS NULL))
+        ''', (data['name'], data['color'], data['size'], data['size']))
+        product = cursor.fetchone()
+        if not product:
+            return jsonify({'success': False, 'error': '商品が見つかりません'})
+
+        shipping_fee = data.get('shipping_fee')
+        cursor.execute('''
+            UPDATE sales
+            SET date = ?, product_id = ?, quantity = ?, price = ?, shipping_fee = ?, bundle_id = ?
+            WHERE id = ?
+        ''', (data['date'], product[0], data['quantity'], data['price'], shipping_fee, data['bundle_id'], data['id']))
+
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'error': '売上データが見つかりません'})
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True)

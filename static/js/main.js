@@ -132,7 +132,8 @@ $(document).ready(function() {
     $('#saleConfirmBtn').click(function() {
         const quantity = parseInt($('#saleQuantity').val());
         const price = parseInt($('#salePrice').val());
-        const shipping = parseInt($('#shippingFee').val())
+        const shippingVal = $('#shippingFee').val();
+        const shipping = shippingVal !== '' ? parseInt(shippingVal) : null;
         const bundleId = $('#bundleId').val();
 
         $.ajax({
@@ -152,7 +153,8 @@ $(document).ready(function() {
                 if (response.success) {
                     $('#saleModal').modal('hide');
                     table.ajax.reload();
-                    $('#saleQuantity, #salePrice, #bundleId, #shippingFee').val('');
+                    $('#saleQuantity, #salePrice, #bundleId').val('');
+                    $('#shippingFee').val('210');
                 } else {
                     alert('エラーが発生しました: ' + response.error);
                 }
@@ -160,13 +162,48 @@ $(document).ready(function() {
         });
     });
 
-       // テーブルの行をダブルクリックで編集モーダル表示
+       // テーブルの行をダブルクリックでクイックアクションモーダル表示
     $('#productTable tbody').on('dblclick', 'tr', function() {
         const data = table.row(this).data();
-        $('#editProductForm input[name="new_name"]').val(data.name);
-        $('#editProductForm input[name="new_color"]').val(data.color);
-        $('#editProductForm input[name="new_size"]').val(data.size);
-        $('#editProductModal').data('oldData', data).modal('show');
+        selectedProduct = data;
+        table.$('tr.selected').removeClass('selected');
+        $(this).addClass('selected');
+        $('#updateStockBtn, #reduceStockBtn').prop('disabled', false);
+
+        $('#quickActionProduct').text(
+            `${data.name} - ${data.color}` + (data.size ? ` - ${data.size}` : '')
+        );
+        $('#quickActionModal').modal('show');
+    });
+
+    // クイックアクション：在庫追加
+    $('#quickStockBtn').click(function() {
+        $('#quickActionModal').modal('hide');
+        $('#selectedProduct').text(
+            `商品: ${selectedProduct.name} - ${selectedProduct.color}` +
+            (selectedProduct.size ? ` - ${selectedProduct.size}` : '')
+        );
+        $('#updateStockModal').modal('show');
+    });
+
+    // クイックアクション：売上登録
+    $('#quickSaleBtn').click(function() {
+        $('#quickActionModal').modal('hide');
+        $('#selectedProductForSale').text(
+            `商品: ${selectedProduct.name} - ${selectedProduct.color}` +
+            (selectedProduct.size ? ` - ${selectedProduct.size}` : '')
+        );
+        $('#shippingFee').val('210');
+        $('#saleModal').modal('show');
+    });
+
+    // クイックアクション：商品編集
+    $('#quickEditBtn').click(function() {
+        $('#quickActionModal').modal('hide');
+        $('#editProductForm input[name="new_name"]').val(selectedProduct.name);
+        $('#editProductForm input[name="new_color"]').val(selectedProduct.color);
+        $('#editProductForm input[name="new_size"]').val(selectedProduct.size);
+        $('#editProductModal').data('oldData', selectedProduct).modal('show');
     });
 
     // 編集実行
