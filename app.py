@@ -187,10 +187,13 @@ def update_sale():
     conn = get_db()
     cursor = conn.cursor()
     try:
+        size = data.get('size') or None
         cursor.execute('''
             SELECT id FROM products
-            WHERE name = ? AND color = ? AND (size = ? OR (size IS NULL AND ? IS NULL))
-        ''', (data['name'], data['color'], data['size'], data['size']))
+            WHERE name = ? AND color = ? AND (
+                size = ? OR (COALESCE(size, '') = '' AND ? IS NULL)
+            )
+        ''', (data['name'], data['color'], size, size))
         product = cursor.fetchone()
         if not product:
             return jsonify({'success': False, 'error': '商品が見つかりません'})
