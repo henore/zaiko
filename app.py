@@ -148,36 +148,38 @@ def show_sales():
 
 @app.route('/get_sales_data', methods=['GET'])
 def get_sales_data():
-    # month パラメータがある場合は特定の月のデータを取得、なければ過去12ヶ月
     month = request.args.get('month')
     conn = get_db()
     cursor = conn.cursor()
+    try:
+        if month:
+            cursor.execute('''
+                SELECT s.rowid as id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
+                       CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
+                       strftime('%Y-%m', s.date) as month
+                FROM sales s
+                JOIN products p ON s.product_id = p.id
+                WHERE strftime('%Y-%m', s.date) = ?
+                ORDER BY s.date DESC
+            ''', (month,))
+        else:
+            cursor.execute('''
+                SELECT s.rowid as id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
+                       CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
+                       strftime('%Y-%m', s.date) as month
+                FROM sales s
+                JOIN products p ON s.product_id = p.id
+                WHERE s.date >= date('now', '-12 months')
+                ORDER BY s.date DESC
+            ''')
 
-    if month:
-        # 特定の月のデータを取得
-        cursor.execute('''
-            SELECT s.rowid as id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
-                   CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
-                   strftime('%Y-%m', s.date) as month
-            FROM sales s
-            JOIN products p ON s.product_id = p.id
-            WHERE strftime('%Y-%m', s.date) = ?
-            ORDER BY s.date DESC
-        ''', (month,))
-    else:
-        # 過去12ヶ月のデータを取得
-        cursor.execute('''
-            SELECT s.rowid as id, s.date, p.name, p.color, p.size, s.quantity, s.price, s.shipping_fee, s.bundle_id,
-                   CAST(s.price - CAST(s.price * 0.1 AS INTEGER) - COALESCE(s.shipping_fee, 0) AS INTEGER) as profit,
-                   strftime('%Y-%m', s.date) as month
-            FROM sales s
-            JOIN products p ON s.product_id = p.id
-            WHERE s.date >= date('now', '-12 months')
-            ORDER BY s.date DESC
-        ''')
-
-    sales = [dict(row) for row in cursor.fetchall()]
-    return jsonify(sales)
+        sales = [dict(row) for row in cursor.fetchall()]
+        return jsonify(sales)
+    except Exception as e:
+        print('get_sales_data error:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 @app.route('/update_sale', methods=['POST'])
 def update_sale():

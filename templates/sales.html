@@ -137,10 +137,19 @@ $(document).ready(function() {
     let detailTable = $('#salesTable').DataTable({
         ajax: {
             url: '/get_sales_data',
-            dataSrc: ''
+            dataSrc: function(json) {
+                if (json.error) {
+                    alert('データ取得エラー: ' + json.error);
+                    return [];
+                }
+                return json;
+            },
+            error: function(xhr) {
+                alert('API通信エラー: ' + xhr.status + ' ' + xhr.responseText);
+            }
         },
         columns: [
-            { data: 'id', visible: false },
+            { data: 'id', visible: false, defaultContent: '' },
             { data: 'date' },
             { data: 'name' },
             { data: 'color' },
