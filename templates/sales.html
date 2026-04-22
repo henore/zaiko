@@ -114,26 +114,20 @@ $(document).ready(function() {
     // 月ごとのフィルター用関数を定義
     $.fn.dataTable.ext.search.push(
         function(settings, data, dataIndex, rowData) {
-            // フィルターが設定されていない場合はすべての行を表示
             if (!window.currentMonthFilter) {
                 return true;
             }
 
-            let rowDate = data[1];
+            let rowDate = rowData.date;
             if (!rowDate) return false;
 
             try {
-                // 日付文字列をDate型に変換
                 const date = new Date(rowDate);
                 if (isNaN(date.getTime())) return false;
 
-                // 年月を取得（YYYY-MM形式）
                 const yearMonth = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-
-                // 設定されたフィルターと一致するかチェック
                 return yearMonth === window.currentMonthFilter;
             } catch (e) {
-                console.error('日付処理エラー:', e);
                 return false;
             }
         }
@@ -214,13 +208,9 @@ $(document).ready(function() {
         // 表示されている日付から年月の一覧を取得
         const yearMonths = {};
 
-        api.column(1).data().each(function(value) {
+        api.rows().data().each(function(rowData) {
             try {
-                // APIから取得した値がオブジェクトの場合
-                if (typeof value === 'object' && value.date) {
-                    value = value.date;
-                }
-
+                const value = rowData.date;
                 if (value) {
                     const date = new Date(value);
                     if (!isNaN(date.getTime())) {
@@ -228,9 +218,7 @@ $(document).ready(function() {
                         yearMonths[ym] = true;
                     }
                 }
-            } catch (e) {
-                console.error('日付処理エラー:', e, value);
-            }
+            } catch (e) {}
         });
 
         // 年月の選択肢を生成（新しい順）
